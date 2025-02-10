@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: url('https://wallpaperaccess.com/full/3995243.jpg');
+            color: white;
+        }
+        #menu {
+            display: block;
+            margin-top: 15%;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        h1 {
+            font-size: 36px;
+            text-shadow: 2px 2px 10px rgba(255, 255, 255, 0.7);
+        }
+        button {
+            background: rgba(255, 255, 255, 0.8);
+            color: black;
+            border: none;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            margin: 10px;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+        button:hover {
+            background: #ffcc00;
+        }
+        #game-container {
+            display: none;
+            margin-top: 20px;
+        }
+        #game-board {
+            display: grid;
+            grid-gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .card {
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.3s, background 0.3s;
+        }
+        .card:hover {
+            transform: scale(1.1);
+        }
+        .matched {
+            background: rgba(0, 255, 0, 0.6);
+            cursor: default;
+        }
+        #timer {
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="menu">
+    <h1>Memory Game</h1>
+    <button onclick="startGame(4, 60)">Легкий (4x4) - 60 сек</button>
+    <button onclick="startGame(6, 90)">Середній (6x6) - 90 сек</button>
+    <button onclick="startGame(8, 120)">Складний (8x8) - 120 сек</button>
+</div>
+
+<div id="game-container">
+    <h1>Меморі Гра</h1>
+    <p id="timer">Час: <span id="time-left"></span> сек</p>
+    <div id="game-board"></div>
+    <p>Очки: <span id="score">0</span></p>
+</div>
+
+<script>
+    const emojiPool = ['🍎', '🍌', '🍒', '🍇', '🍉', '🥝', '🍍', '🥥', '🍑', '🥕', '🌶', '🍓', '🫐', '🥑', '🍆', '🍔', '🍕', '🍩', '🍪', '🍫', '🥜', '🧀', '🥖', '🥗', '🥪', '🍗', '🍖', '🥩', '🍵', '☕', '🍶', '🍷'];
+    let gridSize, timeLeft, timerInterval;
+    let shuffledCards;
+    let openedCards = [];
+    let matchedPairs = 0;
+    let score = 0;
+
+    function startGame(size, time) {
+        gridSize = size;
+        timeLeft = time;
+        document.getElementById('menu').style.display = 'none';
+        document.getElementById('game-container').style.display = 'block';
+        document.getElementById('time-left').textContent = timeLeft;
+        startTimer();
+
+        const totalPairs = (size * size) / 2;
+        shuffledCards = shuffle([...emojiPool.slice(0, totalPairs), ...emojiPool.slice(0, totalPairs)]);
+        createBoard();
+    }
+
+    function shuffle(array) {
+        return array.sort(() => Math.random() - 0.5);
+    }
+
+    function createBoard() {
+        matchedPairs = 0;
+        score = 0;
+        document.getElementById('score').textContent = score;
+
+        const gameBoard = document.getElementById('game-board');
+        gameBoard.innerHTML = '';
+        gameBoard.style.gridTemplateColumns = `repeat(${gridSize}, 100px)`;
+
+        shuffledCards.forEach((emoji, index) => {
+            const card = document.createElement('div');
+            card.classList.add('card');
+            card.dataset.index = index;
+            card.textContent = '?';
+            card.addEventListener('click', flipCard);
+            gameBoard.appendChild(card);
+        });
+    }
+
+    function flipCard(event) {
+        const card = event.target;
+        const index = card.dataset.index;
+        if (openedCards.length < 2 && !card.classList.contains('matched')) {
+            card.textContent = shuffledCards[index];
+            openedCards.push({ card, index });
+            if (openedCards.length === 2) checkMatch();
+        }
+    }
+
+    function checkMatch() {
+        const [first, second] = openedCards;
+        if (shuffledCards[first.index] === shuffledCards[second.index]) {
+            first.card.classList.add('matched');
+            second.card.classList.add('matched');
+            matchedPairs++;
+            score += 10;
+        } else {
+            setTimeout(() => {
+                first.card.textContent = '?';
+                second.card.textContent = '?';
+            }, 500);
+        }
+        openedCards = [];
+        document.getElementById('score').textContent = score;
+
+        if (matchedPairs === shuffledCards.length / 2) {
+            clearInterval(timerInterval);
+            setTimeout(() => alert('Ви виграли! 🎉'), 500);
+        }
+    }
+
+    function startTimer() {
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            document.getElementById('time-left').textContent = timeLeft;
+            updateTimerColor();
+
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                alert('Час вийшов! 😢');
+                resetGame();
+            }
+        }, 1000);
+    }
+
+    function updateTimerColor() {
+        let color;
+        if (timeLeft > 10) color = 'green';
+        else if (timeLeft > 5) color = 'orange';
+        else color = 'red';
+        document.getElementById('timer').style.color = color;
+    }
+
+    function resetGame() {
+        document.getElementById('menu').style.display = 'block';
+        document.getElementById('game-container').style.display = 'none';
+    }
+</script>
+
+</body>
+</html>
